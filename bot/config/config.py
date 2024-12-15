@@ -69,7 +69,7 @@ class Settings(BaseSettings):
 
     DUROV_JUMP_SCORE: Tuple[int, int] = (300, 1556)
     DUROV_JUMP_DURATION: Tuple[int, int] = (60, 180)
-    DUROV_JUMP_ENABLED: bool = True
+    DUROV_JUMP_ENABLED: bool = False
 
     TASK_CONFIGS: Dict[str, TaskConfig] = {
         TaskType.SUBSCRIBE_TELEGRAM: TaskConfig(attempts=10, delay=5, enabled=False),
