@@ -68,7 +68,7 @@ class Settings(BaseSettings):
     VOUCHER_STORAGE_FILE: str = "vouchers.json"
 
     DUROV_JUMP_SCORE: Tuple[int, int] = (300, 1556)
-    DUROV_JUMP_DURATION: Tuple[int, int] = (60, 180)
+    DUROV_JUMP_DURATION: Tuple[int, int] = (120, 300)
     DUROV_JUMP_ENABLED: bool = True
 
     TASK_CONFIGS: Dict[str, TaskConfig] = {
