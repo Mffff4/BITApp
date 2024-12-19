@@ -289,7 +289,6 @@ class Tapper:
             return amount
 
     async def get_tasks(self) -> List[Dict[str, Any]]:
-        """Gets a list of available tasks and filters them."""
         if not self._http_client or not self._access_token:
             raise InvalidSession("No access token or HTTP client not initialized")
 
@@ -598,7 +597,6 @@ class Tapper:
             return False
 
     async def process_task(self, task_id: int, task_type: str) -> bool:
-        """Processes the specified type of task."""
         task_info = await self.get_task_info(task_id)
         if not task_info:
             logger.error(f"Failed to get information about task {task_id}")
@@ -943,43 +941,59 @@ class Tapper:
 
         tickets = await self.check_tickets()
         url = f"{self.BASE_URL}/durov-jump"
-        auth_headers = get_auth_headers(self._access_token)
         
         session_config = config_utils.get_session_config(self.session_name, CONFIG_PATH)
         user_agent = session_config.get('user_agent', '')
-        
-        auth_headers.update({
-            'X-Device-Platform': session_config.get('api', {}).get('device_platform', 'ios'),
+        device_platform = session_config.get('api', {}).get('device_platform', 'ios')
+
+        auth_headers = {
+            'Authorization': f'Bearer {self._access_token}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Accept-Language': 'ru',
+            'X-Device-Platform': device_platform,
             'X-Device-Model': user_agent,
-            'Content-Type': 'application/json'
-        })
-
-        logger.info(self.log_message(f"<ly>Starting Durov Jump game... Available tickets: {tickets}</ly>"))
-        start_time = datetime.now(timezone.utc)
-        game_duration = uniform(settings.DUROV_JUMP_DURATION[0], settings.DUROV_JUMP_DURATION[1])
-        await asyncio.sleep(game_duration)
-        end_time = datetime.now(timezone.utc)
-
-        payload = {
-            "score": randint(settings.DUROV_JUMP_SCORE[0], settings.DUROV_JUMP_SCORE[1]),
-            "start_at": start_time.isoformat(timespec='milliseconds') + "Z",
-            "end_at": end_time.isoformat(timespec='milliseconds') + "Z"
+            'User-Agent': user_agent,
+            'Origin': 'https://bitappprod.com',
+            'Referer': 'https://bitappprod.com/durov-jump',
+            'lang': 'en'
         }
 
-        async with self._http_client.post(url, headers=auth_headers, json=payload) as response:
-            if response.status in (200, 204):
-                data = await response.json()
-                reward = data.get("amount", 0)
-                if reward == 0:
-                    logger.warning(self.log_message("<y>Durov Jump completed but received no reward!</y>"))
-                    tickets = await self.check_tickets()
-                    logger.info(self.log_message(f"<y>Remaining tickets: {tickets}</y>"))
+        logger.info(self.log_message(f"<ly>Starting Durov Jump game... Available tickets: {tickets}</ly>"))
+        
+        game_duration = uniform(settings.DUROV_JUMP_DURATION[0], settings.DUROV_JUMP_DURATION[1])
+        start_time = datetime.now(timezone.utc)
+        await asyncio.sleep(game_duration)
+        end_time = datetime.now(timezone.utc)
+        payload = {
+            "score": randint(settings.DUROV_JUMP_SCORE[0], settings.DUROV_JUMP_SCORE[1]),
+            "start_at": start_time.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
+            "end_at": end_time.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+        }
+
+        try:
+            async with self._http_client.post(url, headers=auth_headers, json=payload) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    reward = data.get("amount", 0)
+                    if reward > 0:
+                        logger.info(self.log_message(
+                            f"<g>Durov Jump completed! Score: {payload['score']}, "
+                            f"Duration: {int(game_duration)}s, Reward: {reward}</g>"
+                        ))
+                        return True
+                    else:
+                        logger.warning(self.log_message("<y>Durov Jump completed but received no reward!</y>"))
                 else:
-                    logger.info(self.log_message(f"<g>Durov Jump completed! Score: {payload['score']}, Duration: {int(game_duration)}s, Reward: {reward}</g>"))
-                return True
-            else:
-                logger.error(self.log_message(f"Failed to submit Durov Jump score: {response.status}"))
+                    logger.error(self.log_message(f"Failed to submit Durov Jump score: {response.status}"))
+                    if response.status == 422:
+                        error_data = await response.json()
+                        logger.error(self.log_message(f"Error details: {error_data}"))
                 return False
+        except Exception as e:
+            logger.error(self.log_message(f"Error in Durov Jump: {str(e)}"))
+            return False
+
 async def run_tapper(tg_client: UniversalTelegramClient):
     runner = Tapper(tg_client=tg_client)
     try:
