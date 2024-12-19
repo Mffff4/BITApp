@@ -9,7 +9,12 @@ custom_theme = Theme({
     'error': 'red',
     'critical': 'red reverse',
     'success': 'green',
-    'timestamp': 'white'
+    'timestamp': 'white',
+    'ly': 'yellow',
+    'y': 'yellow',
+    'g': 'green',
+    'r': 'red',
+    'c': 'cyan'
 })
 
 console = Console(theme=custom_theme)
