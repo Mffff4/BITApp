@@ -459,9 +459,6 @@ class Tapper:
                 "Unknown"
             )
             
-            logger.info(self.log_message(
-                f"Starting to watch ad: {ad_title} | Type: {ad_data.get('bannerType', 'Unknown')}"
-            ))
 
             await self._http_client.get(trackings["render"])
             await asyncio.sleep(uniform(1, 2))
@@ -535,27 +532,18 @@ class Tapper:
             return False
 
     async def watch_ads_task(self, task_id: int, views_needed: int) -> bool:
-        logger.info(f"Starting task to watch {views_needed} ads")
+        logger.info(self.log_message(f"Starting task to watch {views_needed} ads"))
 
         for i in range(views_needed):
-            logger.info(f"Watching ad ({i + 1}/{views_needed})...")
+            logger.info(self.log_message(f"Watching ad ({i + 1}/{views_needed})..."))
 
             if not await self._watch_ad():
-                logger.error("Error while watching ad")
+                logger.error(self.log_message("Error while watching ad"))
                 return False
 
-            if await self.check_ad_task_status(task_id):
-                logger.info("Task completed!")
-                return True
+            await asyncio.sleep(uniform(3, 5))
 
-            await asyncio.sleep(3)
-
-        if await self.check_ad_task_status(task_id):
-            logger.info("Task completed!")
-            return True
-        
-        logger.warning("Task was not marked as completed after all views")
-        return False
+        return True
 
     async def get_referrals(self) -> int:
         if not self._http_client or not self._access_token:
@@ -596,10 +584,11 @@ class Tapper:
             ))
             return False
 
+
     async def process_task(self, task_id: int, task_type: str) -> bool:
         task_info = await self.get_task_info(task_id)
         if not task_info:
-            logger.error(f"Failed to get information about task {task_id}")
+            logger.error(self.log_message(f"Failed to get information about task {task_id}"))
             return False
 
         if task_info.get("is_completed", False):
@@ -617,8 +606,48 @@ class Tapper:
                 return False
 
         elif task_type == "adsgram":
+            url = f"{self.BASE_URL}/tasks/{task_id}/process"
+            auth_headers = get_auth_headers(self._access_token)
+
             views_needed = task_info.get("additional_data", {}).get("views", 10)
-            return await self.watch_ads_task(task_id, views_needed)
+            logger.info(self.log_message(f"<ly>Starting to watch {views_needed} ads...</ly>"))
+            
+            if not await self.watch_ads_task(task_id, views_needed):
+                return False
+
+            logger.info(self.log_message("<ly>All ads watched, waiting before collecting reward...</ly>"))
+            await asyncio.sleep(uniform(10, 15))
+            
+            max_attempts = 10
+            for attempt in range(max_attempts):
+                try:
+                    async with self._http_client.post(url, headers=auth_headers) as response:
+                        if response.status in (200, 202, 204):
+                            await asyncio.sleep(3)
+                            check_task = await self.get_task_info(task_id)
+                            if check_task and check_task.get("is_completed", False):
+                                logger.info(self.log_message(
+                                    f"<g>Task {check_task.get('title', 'Unknown')} completed successfully! "
+                                    f"Reward: {check_task.get('reward', 0)}</g>"
+                                ))
+                                return True
+                            
+                        logger.info(self.log_message(
+                            f"<y>Attempt {attempt + 1}/{max_attempts} to collect reward...</y>"
+                        ))
+                    
+                    if attempt < max_attempts - 1:
+                        await asyncio.sleep(10)
+                    
+                except Exception as e:
+                    logger.error(self.log_message(
+                        f"<r>Error collecting reward (attempt {attempt + 1}/{max_attempts}): {str(e)}</r>"
+                    ))
+                    if attempt < max_attempts - 1:
+                        await asyncio.sleep(10)
+
+            logger.warning(self.log_message("<y>Failed to collect reward after all attempts</y>"))
+            return False
 
         url = f"{self.BASE_URL}/tasks/{task_id}/process"
         auth_headers = get_auth_headers(self._access_token)
@@ -631,7 +660,8 @@ class Tapper:
             check_task = await self.get_task_info(task_id)
             if check_task and check_task.get("is_completed", False):
                 logger.info(self.log_message(
-                    f"Task {check_task.get('title', 'Unknown')} completed successfully! Reward: {check_task.get('reward', 0)}"
+                    f"Task {check_task.get('title', 'Unknown')} completed successfully! "
+                    f"Reward: {check_task.get('reward', 0)}"
                 ))
                 return True
             else:
@@ -684,7 +714,7 @@ class Tapper:
                 if await self.check_task_status(task_id):
                     logger.info(self.log_message(f"<g>Task {task_title} completed! Reward: {task_reward}</g>"))
                     break
-                logger.debug(self.log_message(f"Task {task_title} check attempt {attempt + 1}/{task_config.attempts}"))
+                #logger.debug(self.log_message(f"Task {task_title} check attempt {attempt + 1}/{task_config.attempts}"))
             else:
                 logger.warning(self.log_message(
                     f"<y>Task {task_title} processing timeout after {task_config.attempts} attempts</y>"

@@ -27,7 +27,6 @@ class Logger:
 
     def _convert_tags(self, message: str) -> str:
         """Конвертирует HTML-подобные теги в формат rich."""
-        # Заменяем HTML теги на rich формат
         replacements = {
             '<ly>': '[ly]',
             '</ly>': '[/ly]',
@@ -45,6 +44,15 @@ class Logger:
             message = message.replace(old, new)
             
         return message
+
+    def debug(self, message: str) -> None:
+        """Логирование отладочных сообщений."""
+        if settings.DEBUG_LOGGING:
+            message = self._convert_tags(message)
+            console.print(
+                f"[timestamp]{self._get_timestamp()}[/timestamp]"
+                f" | [info]DEBUG[/info]    | {message}"
+            )
 
     def info(self, message: str) -> None:
         message = self._convert_tags(message)

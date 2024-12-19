@@ -44,6 +44,7 @@ class Settings(BaseSettings):
 
     REF_ID: str = 'ref_MjI4NjE4Nzk5'
     SUBSCRIBE_TELEGRAM: bool = False
+    WATCH_ADSGRAM: bool = False
     SESSIONS_PER_PROXY: int = 1
     USE_PROXY: bool = True
     DISABLE_PROXY_REPLACE: bool = False
@@ -78,7 +79,7 @@ class Settings(BaseSettings):
         TaskType.HOMESCREEN: TaskConfig(attempts=4, delay=3, enabled=True),
         TaskType.STORY: TaskConfig(attempts=4, delay=3, enabled=True),
         TaskType.ACTIVATE_MINING_BOT: TaskConfig(attempts=4, delay=3, enabled=False),
-        TaskType.ADSGRAM: TaskConfig(attempts=4, delay=3, enabled=False),
+        TaskType.ADSGRAM: TaskConfig(attempts=4, delay=3, enabled=True),
         TaskType.REFERRALS: TaskConfig(attempts=1, delay=1, enabled=True),
         TaskType.PROMOTE_BLOCKCHAIN: TaskConfig(attempts=1, delay=1, enabled=False)
     }
@@ -93,5 +94,10 @@ class Settings(BaseSettings):
             config.enabled = self.SUBSCRIBE_TELEGRAM
         return config
 
+    def get_adsgram_config(self, task_type: str) -> TaskConfig:
+        config = self.TASK_CONFIGS.get(task_type, TaskConfig(4, 3, False))
+        if task_type == TaskType.ADSGRAM:
+            config.enabled = self.WATCH_ADSGRAM
+        return config
 
 settings = Settings()
