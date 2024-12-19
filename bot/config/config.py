@@ -44,7 +44,7 @@ class Settings(BaseSettings):
 
     REF_ID: str = 'ref_MjI4NjE4Nzk5'
     SUBSCRIBE_TELEGRAM: bool = False
-    WATCH_ADSGRAM: bool = False
+    ADSGRAM: bool = False
     SESSIONS_PER_PROXY: int = 1
     USE_PROXY: bool = True
     DISABLE_PROXY_REPLACE: bool = False
@@ -97,7 +97,7 @@ class Settings(BaseSettings):
     def get_adsgram_config(self, task_type: str) -> TaskConfig:
         config = self.TASK_CONFIGS.get(task_type, TaskConfig(4, 3, False))
         if task_type == TaskType.ADSGRAM:
-            config.enabled = self.WATCH_ADSGRAM
+            config.enabled = self.ADSGRAM
         return config
 
 settings = Settings()
