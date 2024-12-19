@@ -105,6 +105,7 @@
 | **DUROV_JUMP_ENABLED**    | True                 | Enable automatic play in Durov Jump                        |
 | **DUROV_JUMP_SCORE**      | [300, 1556]          | Minimum and maximum score for jump              |
 | **DUROV_JUMP_DURATION**   | [60, 180]            | Minimum and maximum jump duration (in seconds) |
+| **ADSGRAM**              | False                | Tasks ADS wiew                               |
 
 ### Task Configuration
 
