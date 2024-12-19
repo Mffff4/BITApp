@@ -1,5 +1,6 @@
 from rich.console import Console
 from rich.theme import Theme
+from rich.markup import escape
 from datetime import datetime
 from bot.config import settings
 
@@ -24,31 +25,57 @@ class Logger:
     def _get_timestamp() -> str:
         return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
+    def _convert_tags(self, message: str) -> str:
+        """Конвертирует HTML-подобные теги в формат rich."""
+        # Заменяем HTML теги на rich формат
+        replacements = {
+            '<ly>': '[ly]',
+            '</ly>': '[/ly]',
+            '<y>': '[y]',
+            '</y>': '[/y]',
+            '<g>': '[g]',
+            '</g>': '[/g]',
+            '<r>': '[r]',
+            '</r>': '[/r]',
+            '<c>': '[c]',
+            '</c>': '[/c]'
+        }
+        
+        for old, new in replacements.items():
+            message = message.replace(old, new)
+            
+        return message
+
     def info(self, message: str) -> None:
+        message = self._convert_tags(message)
         console.print(
             f"[timestamp]{self._get_timestamp()}[/timestamp]"
             f" | [info]INFO[/info]     | {message}"
         )
 
     def warning(self, message: str) -> None:
+        message = self._convert_tags(message)
         console.print(
             f"[timestamp]{self._get_timestamp()}[/timestamp]"
             f" | [warning]WARNING[/warning]  | {message}"
         )
 
     def error(self, message: str) -> None:
+        message = self._convert_tags(message)
         console.print(
             f"[timestamp]{self._get_timestamp()}[/timestamp]"
             f" | [error]ERROR[/error]    | {message}"
         )
 
     def critical(self, message: str) -> None:
+        message = self._convert_tags(message)
         console.print(
             f"[timestamp]{self._get_timestamp()}[/timestamp]"
             f" | [critical]CRITICAL[/critical] | {message}"
         )
 
     def success(self, message: str) -> None:
+        message = self._convert_tags(message)
         console.print(
             f"[timestamp]{self._get_timestamp()}[/timestamp]"
             f" | [success]SUCCESS[/success]  | {message}"
