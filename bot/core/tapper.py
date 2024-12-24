@@ -865,6 +865,9 @@ class Tapper:
                         await self.perform_daily_checkin()
                         await asyncio.sleep(uniform(2, 5))
 
+                    await self.process_mining_bot()
+                    await asyncio.sleep(uniform(2, 5))
+
                     await self.process_in_game_tasks()
                     await asyncio.sleep(uniform(2, 5))
 
@@ -1023,6 +1026,88 @@ class Tapper:
         except Exception as e:
             logger.error(self.log_message(f"Error in Durov Jump: {str(e)}"))
             return False
+
+    async def check_mining_bot(self) -> Optional[Dict[str, Any]]:
+        if not self._http_client or not self._access_token:
+            raise InvalidSession("No access token or HTTP client not initialized")
+
+        url = f"{self.BASE_URL}/users/me"
+        auth_headers = get_auth_headers(self._access_token)
+
+        try:
+            async with self._http_client.get(url, headers=auth_headers) as response:
+                if response.status != 200:
+                    logger.error(self.log_message(f"Failed to check mining bot status: {response.status}"))
+                    return None
+
+                data = await response.json()
+                if data.get("mining_bot"):
+                    return await self.get_mining_bot_info()
+                return None
+        except Exception as e:
+            logger.error(self.log_message(f"<r>Error checking mining bot: {str(e)}</r>"))
+            return None
+
+    async def get_mining_bot_info(self) -> Optional[Dict[str, Any]]:
+        if not self._http_client or not self._access_token:
+            raise InvalidSession("No access token or HTTP client not initialized")
+
+        url = f"{self.BASE_URL}/users/me/mining-bot"
+        auth_headers = get_auth_headers(self._access_token)
+
+        try:
+            async with self._http_client.get(url, headers=auth_headers) as response:
+                if response.status != 200:
+                    logger.error(self.log_message(f"Failed to get mining bot info: {response.status}"))
+                    return None
+
+                data = await response.json()
+                logger.info(self.log_message(
+                    f"Mining bot status: Speed: <c>{data.get('speed')}</c>, "
+                    f"Capacity: <c>{data.get('max_capacity')}</c>, "
+                    f"Amount: <c>{data.get('amount')}</c>"
+                ))
+                return data
+        except Exception as e:
+            logger.error(self.log_message(f"<r>Error getting mining bot info: {str(e)}</r>"))
+            return None
+
+    async def claim_mining_bot_reward(self) -> bool:
+        if not self._http_client or not self._access_token:
+            raise InvalidSession("No access token or HTTP client not initialized")
+
+        url = f"{self.BASE_URL}/users/me/mining-bot"
+        auth_headers = get_auth_headers(self._access_token)
+
+        try:
+            async with self._http_client.post(url, headers=auth_headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    amount = data.get("amount", 0)
+                    logger.info(self.log_message(f"<g>Claimed mining bot reward: {amount} BIT</g>"))
+                    return True
+                else:
+                    logger.error(self.log_message(f"Failed to claim mining bot reward: {response.status}"))
+                    return False
+        except Exception as e:
+            logger.error(self.log_message(f"<r>Error claiming mining bot reward: {str(e)}</r>"))
+            return False
+
+    async def process_mining_bot(self) -> None:
+        try:
+            mining_bot = await self.check_mining_bot()
+            if mining_bot:
+                amount = mining_bot.get("amount", 0)
+                max_capacity = mining_bot.get("max_capacity", 0)
+
+                if amount >= max_capacity * 0.8:
+                    logger.info(self.log_message(
+                        f"Mining bot amount (<c>{amount}</c>) is more than 80% of capacity (<c>{max_capacity}</c>). "
+                        f"Claiming reward..."
+                    ))
+                    await self.claim_mining_bot_reward()
+        except Exception as e:
+            logger.error(self.log_message(f"<r>Error processing mining bot: {str(e)}</r>"))
 
 async def run_tapper(tg_client: UniversalTelegramClient):
     runner = Tapper(tg_client=tg_client)
